@@ -8,8 +8,10 @@ from datetime import datetime
 from itertools import permutations
 from os import path
 import re
+import sqlite3
 
-email = re.compile(r'[\w.-]+@[\w.-]+\.\w+')
+
+re_email = re.compile(r'[\w.-]+@[\w.-]+\.\w+')
 date = re.compile(r'')
 now = datetime.now()
 
@@ -56,35 +58,49 @@ def decode_login(string):
 def main():
 
     root = r'C:\Users\Paul\PycharmProjects\contextis'
-    filepath = r'mid-level-interview-master\data\logins.csv'
+    csv_filepath = r'mid-level-interview-master\data\logins.csv'
+    db_filepath = r'mid-level-interview-master\data\database.sqlite'
     servers = defaultdict(set)
     user_names = defaultdict(Counter)
     user_emails = defaultdict(set)
     user_phones = defaultdict(set)
-    server_logins = defaultdict(set)
+    logins = set()
 
-    with open(path.join(root, filepath), 'r', encoding='UTF-8') as infile:
+    connection = sqlite3.connect(path.join(root, db_filepath))
+    cursor = connection.cursor()
+
+    with open(path.join(root, csv_filepath), 'r', encoding='UTF-8') as infile:
         csv_reader = csv.reader(infile)
         next(csv_reader)
         for (server, ip, user, username, contact, login) in csv_reader:
-            if valid_ip(ip):
+            if valid_ip(ip) and server:
                 servers[ip].add(server)
             user_names[user].update([username])
-            if email.match(contact):
+            if re_email.match(contact):
                 user_emails[user].add(contact)
             else:
-                user_phones[user].add(phone_number(contact))
-            server_logins[ip].add((user, decode_login(login)))
+                user_phone = phone_number(contact)
+                if user_phone:
+                    user_phones[user].add(phone_number(contact))
+            logins.add((user, ip, decode_login(login)))
     for ip in servers:
-        print(ip, servers[ip])
-
+        cursor.execute('INSERT INTO servers VALUES (?, ?)',
+                       (ip, list(servers[ip])[0]))
     for user in user_names:
-        print(user, user_names[user].most_common(1)[0][0])
-        print(user, user_emails[user], user_phones[user])
-    for ip in server_logins:
-        for user, login in server_logins[ip]:
-            print(ip, user, login)
+        cursor.execute('INSERT INTO users VALUES (?, ?)',
+                       (user, user_names[user].most_common(1)[0][0]))
+        for email in user_emails[user]:
+            cursor.execute('INSERT INTO user_emails VALUES (?, ?)',
+                           (user, email))
+        for phone in user_phones[user]:
+            cursor.execute('INSERT INTO user_phones VALUES (?, ?)',
+                           (user, phone))
+    for user, ip, login_datetime in sorted(logins, key=lambda x: x[2]):
+        cursor.execute('INSERT INTO logins VALUES (?, ?, ?)',
+                       (user, ip, login_datetime.isoformat()))
 
+    connection.commit()
+    connection.close()
 
 if __name__ == '__main__':
     main()
