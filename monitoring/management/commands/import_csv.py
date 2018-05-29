@@ -32,7 +32,6 @@ def phone_number(string):
 
 
 def decode_login(string):
-    print("Decoding", string)
     try:
         return datetime.strptime(string, '%Y-%m-%d %H:%M:%S.%f')
     except ValueError:
