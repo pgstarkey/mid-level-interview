@@ -1,0 +1,23 @@
+<h1>Server Logins</h1>
+
+{% for entry in logins %}
+<h2>{{ entry.server.ip }}  {{entry.server.name }}</h2>
+<table>
+    <tr>
+        <th>User ID</th>
+        <th>User Name</th>
+        <th>Login Date/Time</th>
+        <th>emails</th>
+        <th>Phone numbers</th>
+    </tr>
+{% for login in entry.logins %}
+    <tr>
+        <td>{{ login.user }}</td>
+        <td>{{ login.name }}</td>
+        <td>{{ login.datetime }}</td>
+        <td>{{ login.email }}</td>
+        <td>{{ login.phone }}</td>
+    </tr>
+{% endfor %}
+</table>
+{% endfor %}
