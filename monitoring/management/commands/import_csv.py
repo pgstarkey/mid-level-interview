@@ -18,6 +18,13 @@ database = DATABASES['default']['NAME']
 
 
 def valid_ip(string):
+    """
+    Determine (best efforts) whether an input string represents a valid IP
+    address, on the basis that it contains four octets separated by periods,
+    with each octet being in the range 0 to 255.
+    :param string: the input string potentially representing an IP address
+    :return: whether the string is a valid IP address (boolean)
+    """
     octets = string.split('.')
     try:
         return (len(octets) == 4 and all(0 <= int(octet) <= 255
@@ -27,6 +34,15 @@ def valid_ip(string):
 
 
 def phone_number(string):
+    """
+    Format an input string that may represent a UK phone number (STD or
+    internatonal formats) on a best efforts basis.  The number is assumed to
+    have a leading zero, including after any international part.  Formatting is
+    5/5 for 10-digit numbers, 3/4/4 for 11-digit numbers.
+    :param string: the input string potentially representing a phone number
+    :return: the formatted number or en empty string is the input is not a valid
+    phone number
+    """
     stripped = ''.join([c for c in string if c not in ['(', ')', '+', ' ']])
     try:
         std = stripped[stripped.index('0'):]
@@ -41,6 +57,15 @@ def phone_number(string):
 
 
 def decode_login(string):
+    """
+    Return the best guess at the datatime value for the server login.  Correctly
+    formatted datetimes are handled first using standard conversions, then any
+    other datetimes are assumed to be dates only.  The latest date in the past
+    that can be formed from any combination of the three numbers extracted
+    fro mthe input is assumed to be the date that was intended.
+    :param string: the input string potentially representing a datetime
+    :return: the datetime if valid or None otherwise
+    """
     try:
         return datetime.strptime(string, '%Y-%m-%d %H:%M:%S.%f')
     except ValueError:
@@ -56,7 +81,7 @@ def decode_login(string):
                 elements = [int(e) for e in re.sub(
                     '[^\d]+', '-', string).split('-')]
                 if len(elements) != 3:
-                    return ''
+                    return None
                 possibilities = permutations(elements, 3)
                 possible_datetimes = []
                 for poss in possibilities:
@@ -69,9 +94,9 @@ def decode_login(string):
                     if possible_date <= now:
                         possible_datetimes.append(possible_date)
                 return (sorted(possible_datetimes, reverse=True)[0]
-                        if possible_datetimes else '')
+                        if possible_datetimes else None)
             except ValueError:
-                return ''
+                return None
 
 
 class Command(BaseCommand):
@@ -99,7 +124,9 @@ class Command(BaseCommand):
                     user_phone = phone_number(contact)
                     if user_phone:
                         user_phones[user].add(phone_number(contact))
-                logins.add((user, ip, decode_login(login)))
+                login_datetime = decode_login(login)
+                if login_datetime:
+                    logins.add((user, ip, login_datetime))
         for ip in servers:
             cursor.execute('INSERT INTO servers VALUES (?, ?)',
                            (ip, list(servers[ip])[0]))

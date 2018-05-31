@@ -6,6 +6,15 @@ from .models import Logins, Users, Servers, UserEmails, UserPhones
 
 
 def index(request):
+    """
+    Render a page to show server logins.  Quasi-static details for users,
+    servers and related data is queried in full.  The latest login for each
+    user/server pair is then queried.  The page is structured per server, with a
+    list of the latest logins per user being given for each server, including
+    contact details.
+    :param request: the request for the page
+    :return: the rendered page
+    """
     users = Users.objects.all()
     user_emails = UserEmails.objects.all()
     user_phones = UserPhones.objects.all()
